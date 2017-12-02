@@ -325,10 +325,10 @@ public:
 
     iterator end() noexcept;
 
-    iterator insert ( const value_type & va );
+    std::pair<iterator,bool> insert ( const value_type & va );
 
     //iterator erase ( const_iterator position );
-    bool erase ( const key_type& k );
+    size_t erase ( const key_type& k );
 
     iterator find ( const key_type& k );
     //const_iterator find ( const key_type& k ) const;
@@ -377,7 +377,7 @@ void hashtable::resize_and_rehash(size_t new_size) {
     internals_.resize_and_rehash(new_size);
 }
 
-hashtable::iterator hashtable::insert( const value_type & va ) {
+std::pair<hashtable::iterator,bool> hashtable::insert( const value_type & va ) {
     key_type k {va.first};
     mapped_type v {va.second};
 
@@ -399,11 +399,11 @@ hashtable::iterator hashtable::insert( const value_type & va ) {
         }
     }
 
-    return iterator{this, index};
+    return std::make_pair(iterator{this, index}, true);
 }
 
-bool hashtable::erase( const key_type & key) {
-    return internals_.remove(key);
+size_t hashtable::erase( const key_type & key) {
+    return internals_.remove(key) ? 1 : 0;
 }
 
 hashtable::iterator hashtable::find( const key_type& k ) {
