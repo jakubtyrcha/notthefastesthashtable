@@ -13,17 +13,19 @@ TEST_CASE( "Hashtable internals support insertion, overwrites and removals", "[h
     {
         u32 k = 1;
         u32 v = 100;
-        auto [ok, index, overwritten] = h.try_insert(k, v);
+        auto [ok, index, collision] = h.try_insert(k, v);
         REQUIRE(h.values_[h.find(1)] == 100);
         REQUIRE(h.find(1) == index);
+        REQUIRE(!collision);
     }
     {
         u32 k = 1;
         u32 v = 101;
-        auto [ok, index, overwritten] = h.try_insert(k, v);
+        auto [ok, index, collision] = h.try_insert(k, v);
+        h.values_[index] = 101;
         REQUIRE(h.values_[h.find(1)] == 101);
         REQUIRE(h.find(1) == index);
-        REQUIRE(overwritten);
+        REQUIRE(collision);
     }
     REQUIRE(h.size() == 1);
 
@@ -31,7 +33,7 @@ TEST_CASE( "Hashtable internals support insertion, overwrites and removals", "[h
     {
         u32 k = i;
         u32 v = 100 + i;
-        auto [ok, index, overwritten] = h.try_insert(k, v);
+        auto [ok, index, collision] = h.try_insert(k, v);
         REQUIRE(h.find(i) == index);
     }
     for(u32 i = 0; i < 17; i++)
@@ -95,7 +97,7 @@ TEST_CASE( "Hashtable internals supports resize and iteration", "[hashtable_inte
 TEST_CASE( "Hashtable supports default initialization and multiple insertions with rehashes", "[hashtable]" ) {
     hashtable h;
     for(u32 i = 0; i< 1000; i++) {
-        auto iter = h.insert(std::make_pair(i, 1000 + i));
+        auto [iter, ok] = h.insert(std::make_pair(i, 1000 + i));
         REQUIRE(iter.key() == i);
         REQUIRE(iter.value() == 1000 + i);
     }
@@ -109,10 +111,10 @@ TEST_CASE( "Hashtable supports default initialization and multiple insertions wi
     }
 }
 
-TEST_CASE( "Hashtable supports insertions mixed with erasures", "[hashtable]" ) {
+TEST_CASE( "Hashtable supports insertions mixed with erasures, failing insertions return iter to colliding key", "[hashtable]" ) {
     hashtable h;
     for(u32 i = 0; i< 20; i++) {
-        auto iter = h.insert(std::make_pair(i, 1000 + i));
+        auto [iter, ok] = h.insert(std::make_pair(i, 1000 + i));
         REQUIRE(iter.key() == i);
         REQUIRE(iter.value() == 1000 + i);
     }
@@ -127,7 +129,11 @@ TEST_CASE( "Hashtable supports insertions mixed with erasures", "[hashtable]" ) 
     REQUIRE(h.size() == 10);
 
     for(u32 i = 0; i< 20; i++) {
-        auto iter = h.insert(std::make_pair(i, 2000 + i));
+        auto [iter, ok] = h.insert(std::make_pair(i, 2000 + i));
+        if(!ok)
+        {
+            iter.value() = 2000 + i;
+        }
         REQUIRE(iter.key() == i);
         REQUIRE(iter.value() == 2000 + i);
     }
@@ -142,7 +148,11 @@ TEST_CASE( "Hashtable supports insertions mixed with erasures", "[hashtable]" ) 
     REQUIRE(h.size() == 10);
 
     for(u32 i = 0; i< 20; i++) {
-        auto iter = h.insert(std::make_pair(i, 3000 + i));
+        auto [iter, ok] = h.insert(std::make_pair(i, 3000 + i));
+        if(!ok)
+        {
+            iter.value() = 3000 + i;
+        }
         REQUIRE(iter.key() == i);
         REQUIRE(iter.value() == 3000 + i);
     }
@@ -152,7 +162,7 @@ TEST_CASE( "Hashtable supports insertions mixed with erasures", "[hashtable]" ) 
 TEST_CASE( "Hashtable supports large num of elements", "[hashtable]" ) {
     hashtable h;
     for(u32 i = 0; i< 1000000; i++) {
-        auto iter = h.insert(std::make_pair(i, 1000 + i));
+        auto [iter, ok] = h.insert(std::make_pair(i, 1000 + i));
         REQUIRE(iter.key() == i);
         REQUIRE(iter.value() == 1000 + i);
     }

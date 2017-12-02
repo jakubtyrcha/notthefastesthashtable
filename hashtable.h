@@ -211,9 +211,7 @@ std::tuple<bool, i32, bool> hash_table_internals::try_insert(key_type & key, map
             return std::make_tuple(true, original_index, false);
         }
         if(keys_[index].key == key) {
-            values_[index] = value;
-            original_index = (original_index == -1) ? index : original_index;
-            return std::make_tuple(true, original_index, true);
+            return std::make_tuple(true, index, true);
         }
         if(keys_[index].read_offset() < offset) {
             std::swap(keys_[index].key, key);
@@ -385,7 +383,7 @@ std::pair<hashtable::iterator,bool> hashtable::insert( const value_type & va ) {
         resize_and_rehash(hashtable_size(internals_.tablesize_ + 1));
     }
 
-    auto [success, index, overwritten] = internals_.try_insert(k, v);
+    auto [success, index, collision] = internals_.try_insert(k, v);
     while(!success) {
         if(index != -1) {
             std::swap(internals_.keys_[index].key, k);
@@ -393,13 +391,13 @@ std::pair<hashtable::iterator,bool> hashtable::insert( const value_type & va ) {
         }
         resize_and_rehash(hashtable_size(internals_.tablesize_ + 1));
         {
-            auto [success_re, index_re, overwritten] = internals_.try_insert(k, v);
+            auto [success_re, index_re, collision] = internals_.try_insert(k, v);
             success = success_re;
             index = index_re;
         }
     }
 
-    return std::make_pair(iterator{this, index}, true);
+    return std::make_pair(iterator{this, index}, (index != -1) && !collision);
 }
 
 size_t hashtable::erase( const key_type & key) {
